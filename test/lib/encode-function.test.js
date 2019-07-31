@@ -13,7 +13,7 @@ const encodeFunction = require('./../../lib/encode-function');
 
 describe('encodeFunction', () => {
   let registry;
-  
+
   beforeEach(() => {
     registry = {
       cache: new SchemaCache(),
@@ -99,7 +99,7 @@ describe('encodeFunction', () => {
         expect(encoded).to.eql(buffer);
       });
     });
-    
+
     it('rejects with an error if schema registry call returns with an error', () => {
       nock('http://test.com')
         .post('/subjects/test-key/versions')
@@ -144,6 +144,22 @@ describe('encodeFunction', () => {
         });
       });
     });
-  });
 
+    it('throws error if schema is different than latest version not exist and pushNewSchemas is false', () => {
+      const schema = {type: 'string'};
+      const message = 'test message';
+      nock('http://test.com')
+        .get('/subjects/test-key/versions')
+        .reply(200, [1, 2]);
+      nock('http://test.com')
+        .get('/subjects/test-key/versions/2')
+        .reply(200, {});
+      const uut = encodeFunction.bySchema('key', registry, false);
+      return uut('test', schema, message).catch((error) => {
+        expect(error).to.exist
+          .and.be.instanceof(Error)
+          .and.have.property('message', 'Unable to locate schema in the registry');
+      });
+    });
+  });
 });
