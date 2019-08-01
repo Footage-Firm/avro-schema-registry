@@ -8,7 +8,7 @@ const SchemaCache = require('./lib/schema-cache');
 const decodeFunction = require('./lib/decode-function');
 const encodeFunction = require('./lib/encode-function');
 
-function schemas(registryUrl, options = { pushNewSchemas: false }) {
+function schemas(registryUrl, options = { pushNewSchemas: true }) {
   const {pushNewSchemas} = options;
   const parsed = url.parse(registryUrl);
   const registry = {

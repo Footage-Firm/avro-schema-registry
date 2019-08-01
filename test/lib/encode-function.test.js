@@ -131,6 +131,7 @@ describe('encodeFunction', () => {
       const schema = {type: 'string'};
       const message = 'test message';
       const buffer = Buffer.from([0x00,0x00,0x00,0x00,0x01,0x18,0x74,0x65,0x73,0x74,0x20,0x6d,0x65,0x73,0x73,0x61,0x67,0x65]);
+
       nock('http://test.com')
         .post('/subjects/test-key/versions')
         .reply(200, {id: 1});
@@ -145,15 +146,43 @@ describe('encodeFunction', () => {
       });
     });
 
+    it('encodes message when schema exists in the registry and pushNewSchemas is false', () => {
+      const schema = {type: 'string'};
+      const message = 'test message';
+      const buffer = Buffer.from([0x00,0x00,0x00,0x00,0x01,0x18,0x74,0x65,0x73,0x74,0x20,0x6d,0x65,0x73,0x73,0x61,0x67,0x65]);
+      const versions = [1, 2, 3];
+
+      nock('http://test.com')
+        .get('/subjects/test-key/versions')
+        .reply(200, versions);
+
+      versions.map(version => {
+        const body = version === 2 ? {schema: schema, id: 1} : {};
+        nock('http://test.com')
+          .get('/subjects/test-key/versions/' + version)
+          .reply(200, body);
+      });
+
+      const uut = encodeFunction.bySchema('key', registry, false);
+      return uut('test', schema, message).then((encoded) => {
+        expect(encoded).to.eql(buffer);
+      });
+    });
+
     it('throws error if schema is different than latest version not exist and pushNewSchemas is false', () => {
       const schema = {type: 'string'};
       const message = 'test message';
+      const versions = [1, 2];
       nock('http://test.com')
         .get('/subjects/test-key/versions')
-        .reply(200, [1, 2]);
-      nock('http://test.com')
-        .get('/subjects/test-key/versions/2')
-        .reply(200, {});
+        .reply(200, versions);
+
+      versions.map(version => {
+        nock('http://test.com')
+          .get('/subjects/test-key/versions/' + version)
+          .reply(200, {});
+      });
+
       const uut = encodeFunction.bySchema('key', registry, false);
       return uut('test', schema, message).catch((error) => {
         expect(error).to.exist
